@@ -114,45 +114,50 @@ return res.status(200).json({
     }
 }
 
-module.exports.updateBusiness=async(req,res)=>{
-    let {...data}=req.body;
-    
-    try{
-        if (req.file) {
-            console.log('File received:', req.file.path);
-          
-            const cloudinaryResult = await cloudinaryUploadImage(req.file.path);
-            
-            if (cloudinaryResult.url) {
-             
-                data.photo = cloudinaryResult.url;
-                console.log('Image uploaded to Cloudinary:', cloudinaryResult.url);
-                
-                
-                fs.unlinkSync(req.file.path);
-            } else {
-                throw new Error('Failed to upload image to Cloudinary');
-            }
-        }
+module.exports.updateBusiness = async (req, res) => {
+  let { ...data } = req.body;
 
-await businessModel.findByIdAndUpdate(data.businessId,{
-    $set:data
-})
+  try {
+      // Convert empty/undefined values to empty strings
+      Object.keys(data).forEach(key => {
+          if (data[key] === undefined || data[key] === null) {
+              data[key] = '';
+          }
+      });
 
-console.log("DATA")
-console.log(data)
-return res.status(200).json({
-    message:"business updated sucessfully"
-})
+      if (req.file) {
+          console.log('File received:', req.file.path);
 
-    }catch(e){
-        console.error(e);
-        return res.status(400).json({
+          const cloudinaryResult = await cloudinaryUploadImage(req.file.path);
+
+          if (cloudinaryResult.url) {
+              data.photo = cloudinaryResult.url;
+              console.log('Image uploaded to Cloudinary:', cloudinaryResult.url);
+
+              fs.unlinkSync(req.file.path);
+          } else {
+              throw new Error('Failed to upload image to Cloudinary');
+          }
+      }
+
+      await businessModel.findByIdAndUpdate(data.businessId, {
+          $set: data
+      });
+
+      console.log("DATA");
+      console.log(data);
+
+      return res.status(200).json({
+          message: "business updated successfully"
+      });
+
+  } catch (e) {
+      console.error(e);
+      return res.status(400).json({
           error: "Error occurred while updating your business. Please try again."
-        });
-    }
-}
-
+      });
+  }
+};
 
 module.exports.getOverview=async(req,res)=>{
   try{
