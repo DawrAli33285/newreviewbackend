@@ -199,6 +199,16 @@ app.get('/cancel-subscription', async (req, res) => {
   }
 });
 
+
+app.get('/checkenv', (req, res) => {
+  res.json({
+    status: 'Environment working ✅',
+    node_env: process.env.NODE_ENV,
+    app_mode: process.env.APP_MODE,
+    port: process.env.PORT
+  });
+});
+
 const reviewsUpdateJob = new cron.CronJob(
   '0 0 * * *',
    async function() {
