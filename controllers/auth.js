@@ -69,46 +69,57 @@ return res.status(200).json({
     }
 }
 
+module.exports.deleteUser = async (req, res) => {
+    const { id } = req.params;
 
-module.exports.deleteUser=async(req,res)=>{
-    let {id}=req.params;
-    try{
-        const stripe = require('stripe')(process.env.STRIPE_LIVE); 
+    try {
+        const stripe = require('stripe')(process.env.STRIPE_LIVE);
 
-await userModel.findByIdAndUpdate(id,{
-    $set:{
-        userName:`deleteduser-${id}`
-    }
-},{new:true})
-await businessModel.updateOne({
-    $expr:{
-   $eq:[{$toString:`user`},id]
-    }
-},{$set:{
-    businessName:`deletedBusiness-${id}`
-}})
+        // 1️⃣ Rename user
+        await userModel.findByIdAndUpdate(id, {
+            $set: {
+                userName: `deleteduser-${id}`
+            }
+        }, { new: true });
 
+        // 2️⃣ Rename business
+        await businessModel.updateOne({
+            $expr: {
+                $eq: [{ $toString: "$user" }, id]
+            }
+        }, {
+            $set: {
+                businessName: `deletedBusiness-${id}`
+            }
+        });
 
-let user=await userModel.findOne({_id:req.user._id}).populate('subscription')
-if(user?.subscription?.status=='active'){
-    await stripe.subscriptions.cancel(
-       user?.subscription?.subscriptionId
-      );
-      await subscriptionModel.findByIdAndUpdate(user.subscription._id,{
-        $set:{
-            status:'cancelled'
+        // 3️⃣ Get user with subscription populated
+        const user = await userModel.findById(id).populate('subscription');
+
+        // 4️⃣ If active subscription → cancel on Stripe and update DB
+        if (user?.subscription?.status === 'active') {
+            await stripe.subscriptions.cancel(user.subscription.subscriptionId);
+
+            await subscriptionModel.findByIdAndUpdate(user.subscription._id, {
+                $set: {
+                    status: 'cancelled'
+                }
+            });
         }
-      })
-}
 
-return res.status(200).json({
-message:'User deleted sucessfully'
-})
+        // 5️⃣ Remove subscription reference from user
+        await userModel.findByIdAndUpdate(id, {
+            $unset: { subscription: "" }
+        });
 
-    }catch(e){
- console.log(e.message)
+        return res.status(200).json({
+            message: 'User deleted successfully'
+        });
+
+    } catch (e) {
+        console.log(e.message);
         return res.status(400).json({
-            error:"Error occured while deleting user"
-        })
+            error: "Error occurred while deleting user"
+        });
     }
-}
+};
