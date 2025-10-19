@@ -83,8 +83,8 @@ module.exports.subscribe = async (req, res) => {
             customer: stripeCustomer.id,
             items: [{ price: stripePrice.id }], 
             default_payment_method: paymentMethod,
+            payment_behavior: 'error_if_incomplete', // This will throw error if payment fails
         });
-
         // Create subscription in database
         const sub = await subscriptionModel.create({
             subscriptionId: stripeSubscription.id,
