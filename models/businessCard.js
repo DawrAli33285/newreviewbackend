@@ -30,6 +30,9 @@ const businessCard=mongoose.Schema({
     visitCount:{
         type:Number
     },
+    email:{
+type:String
+    },
     website:{
 type:String
     },

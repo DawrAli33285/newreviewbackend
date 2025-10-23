@@ -38,6 +38,7 @@ return res.status(400).json({
 
 
 module.exports.getPlans=async(req,res)=>{
+    console.log("HERE")
     try{
 let plans=await planModel.find({})
 return res.status(200).json({
