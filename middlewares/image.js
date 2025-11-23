@@ -2,10 +2,10 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Always use a real directory inside your project
-const BASE_UPLOAD_PATH = path.join(__dirname, '../public/uploads');
+// Use absolute path for better reliability
+const BASE_UPLOAD_PATH = path.join(process.cwd(), 'public/uploads');
 
-// Create folders automatically
+// Enhanced directory creation with error handling
 const createUploadDirs = () => {
   const dirs = [
     BASE_UPLOAD_PATH,
@@ -17,9 +17,16 @@ const createUploadDirs = () => {
   ];
 
   dirs.forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      console.log(`Created directory: ${dir}`);
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created directory: ${dir}`);
+        
+        // Set permissions after creation (Linux specific)
+        fs.chmodSync(dir, 0o755);
+      }
+    } catch (error) {
+      console.error(`Error creating directory ${dir}:`, error);
     }
   });
 };
@@ -30,12 +37,20 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadPath = BASE_UPLOAD_PATH;
 
-    if (req.route.path.includes('product')) {
+    // More robust path detection
+    const path = req.route?.path || req.originalUrl || '';
+    
+    if (path.includes('product')) {
       uploadPath = path.join(BASE_UPLOAD_PATH, 'products');
-    } else if (req.route.path.includes('profile')) {
+    } else if (path.includes('profile')) {
       uploadPath = path.join(BASE_UPLOAD_PATH, 'profiles');
-    } else if (req.route.path.includes('business')) {
+    } else if (path.includes('business')) {
       uploadPath = path.join(BASE_UPLOAD_PATH, 'business');
+    }
+
+    // Ensure directory exists
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
     }
 
     cb(null, uploadPath);
@@ -49,14 +64,36 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) cb(null, true);
-  else cb(new Error('Only image files allowed'), false);
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'), false);
+  }
 };
 
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024, files: 5 }
+  limits: { 
+    fileSize: 5 * 1024 * 1024, 
+    files: 5 
+  }
 });
 
-module.exports = upload;
+// Error handling middleware
+const handleMulterError = (error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File too large' });
+    }
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ error: 'Too many files' });
+    }
+  } else if (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  next();
+};
+module.exports=upload;
