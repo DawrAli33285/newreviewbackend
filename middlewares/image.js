@@ -101,16 +101,22 @@
 
 
 
-
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads'); // adjust if needed
+const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
 
-// ensure folder exists
+// Ensure folder exists with proper permissions
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  
+  // Set permissions on Linux/Unix (VPS)
+  try {
+    fs.chmodSync(UPLOADS_DIR, 0o755);
+  } catch (err) {
+    console.log('Could not set permissions (might be Windows)');
+  }
 }
 
 const storage = multer.diskStorage({
@@ -123,5 +129,8 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({ 
+  storage
+});
+
 module.exports = upload;

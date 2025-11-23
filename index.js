@@ -3,7 +3,10 @@ const app=express();
 const cron = require('cron');
 require('dotenv').config();
 const cors=require('cors')
-app.use(cors())
+app.use(cors({
+  origin: '*', 
+  credentials: true
+}));
 
 const authRoutes=require('./routes/auth')
 const businessRoutes=require('./routes/business')
