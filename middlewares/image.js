@@ -1,11 +1,9 @@
-
-
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
 
-const BASE_UPLOAD_PATH = '/tmp/public/files/images';
+const BASE_UPLOAD_PATH = path.join(__dirname, '../public/uploads');
 
 
 const createUploadDirs = () => {
@@ -13,9 +11,11 @@ const createUploadDirs = () => {
     BASE_UPLOAD_PATH,
     path.join(BASE_UPLOAD_PATH, 'business'),
     path.join(BASE_UPLOAD_PATH, 'user'),
-    path.join(BASE_UPLOAD_PATH, 'temp')
+    path.join(BASE_UPLOAD_PATH, 'temp'),
+    path.join(BASE_UPLOAD_PATH, 'products'),  
+    path.join(BASE_UPLOAD_PATH, 'profiles')   
   ];
-  
+
   dirs.forEach(dir => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -28,28 +28,28 @@ createUploadDirs();
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-   
     let uploadPath = BASE_UPLOAD_PATH;
-    
-   
+
+t
     if (req.route.path.includes('product')) {
       uploadPath = path.join(BASE_UPLOAD_PATH, 'products');
     } else if (req.route.path.includes('profile')) {
       uploadPath = path.join(BASE_UPLOAD_PATH, 'profiles');
     }
-    
+
     cb(null, uploadPath);
   },
+
   filename: (req, file, cb) => {
-   
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const fileName = file.fieldname + '-' + uniqueName + path.extname(file.originalname);
-    cb(null, fileName); 
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const fileName =
+      file.fieldname + '-' + uniqueName + path.extname(file.originalname);
+
+    cb(null, fileName);
   }
 });
 
 const fileFilter = (req, file, cb) => {
- 
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
@@ -57,13 +57,12 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-
-const upload = multer({ 
-  storage, 
+const upload = multer({
+  storage,
   fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, 
-    files: 5 
+    files: 5
   }
 });
 
