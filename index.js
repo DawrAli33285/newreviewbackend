@@ -1,6 +1,8 @@
 const express=require('express')
 const app=express();
 const cron = require('cron');
+const { cloudinaryUploadImage } = require('./middlewares/cloudinary'); // adjust path
+const upload=require('./middlewares/image')
 require('dotenv').config();
 const cors=require('cors')
 app.use(cors({
@@ -280,7 +282,55 @@ const reviewsUpdateJob = new cron.CronJob(
  );
 
 
- 
+ app.post('/api/upload', upload.single('image'), async (req, res) => {
+  console.log('📤 Upload request received');
+  
+  try {
+    if (!req.file) {
+      console.log('❌ No file in request');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No file uploaded' 
+      });
+    }
+
+    console.log('📁 Temp file saved:', req.file.path);
+
+    // Upload to Cloudinary
+    const cloudinaryResult = await cloudinaryUploadImage(req.file.path);
+
+    if (!cloudinaryResult.url) {
+      throw new Error('Failed to upload to Cloudinary');
+    }
+
+    console.log('✅ Image uploaded to Cloudinary:', cloudinaryResult.url);
+
+    // Clean up temp file
+    fs.unlinkSync(req.file.path);
+    
+    res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      filename: req.file.filename,
+      url: cloudinaryResult.url, // Cloudinary URL
+      fullUrl: cloudinaryResult.url // Already a full URL
+    });
+
+  } catch (error) {
+    console.error('❌ Upload error:', error);
+    
+    // Clean up temp file on error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      error: error.message || 'Upload failed'
+    });
+  }
+});
+
 
 app.listen(process.env.PORT,()=>{
     console.log(`Listening to PORT ${process.env.PORT}`)

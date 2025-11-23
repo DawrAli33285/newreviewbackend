@@ -114,50 +114,124 @@ return res.status(200).json({
     }
 }
 
+
 module.exports.updateBusiness = async (req, res) => {
   let { ...data } = req.body;
 
   try {
-      // Convert empty/undefined values to empty strings
-      Object.keys(data).forEach(key => {
-          if (data[key] === undefined || data[key] === null) {
-              data[key] = '';
-          }
-      });
-
-      if (req.file) {
-          console.log('File received:', req.file.path);
-
-          const cloudinaryResult = await cloudinaryUploadImage(req.file.path);
-
-          if (cloudinaryResult.url) {
-              data.photo = cloudinaryResult.url;
-              console.log('Image uploaded to Cloudinary:', cloudinaryResult.url);
-
-              fs.unlinkSync(req.file.path);
-          } else {
-              throw new Error('Failed to upload image to Cloudinary');
-          }
+    // Convert empty/undefined values to empty strings
+    Object.keys(data).forEach(key => {
+      if (data[key] === undefined || data[key] === null) {
+        data[key] = '';
       }
+    });
 
-      await businessModel.findByIdAndUpdate(data.businessId, {
-          $set: data
+    // Handle file upload to Cloudinary
+    if (req.file) {
+      console.log('📤 File received:', req.file.path);
+
+      try {
+        const cloudinaryResult = await cloudinaryUploadImage(req.file.path);
+
+        if (cloudinaryResult.url) {
+          data.photo = cloudinaryResult.url;
+          console.log('✅ Image uploaded to Cloudinary:', cloudinaryResult.url);
+
+          // Clean up local temp file
+          fs.unlinkSync(req.file.path);
+        } else {
+          throw new Error('Failed to upload image to Cloudinary');
+        }
+      } catch (uploadError) {
+        console.error('❌ Cloudinary upload error:', uploadError);
+        
+        // Clean up local file even on error
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        
+        return res.status(500).json({
+          error: 'Failed to upload image. Please try again.'
+        });
+      }
+    }
+
+    // ⭐ FIX: Return updated document
+    const updatedBusiness = await businessModel.findByIdAndUpdate(
+      data.businessId,
+      { $set: data },
+      { new: true } // This makes it return the updated document
+    );
+
+    if (!updatedBusiness) {
+      return res.status(404).json({
+        error: 'Business not found'
       });
+    }
 
-      console.log("DATA");
-      console.log(data);
+    console.log('✅ Business updated successfully');
+    console.log('📸 Photo URL:', updatedBusiness.photo);
 
-      return res.status(200).json({
-          message: "business updated successfully"
-      });
+    // ⭐ FIX: Return the updated business data
+    return res.status(200).json({
+      success: true,
+      message: 'Business updated successfully',
+      business: updatedBusiness // Frontend needs this!
+    });
 
   } catch (e) {
-      console.error(e);
-      return res.status(400).json({
-          error: "Error occurred while updating your business. Please try again."
-      });
+    console.error('❌ Error updating business:', e);
+    return res.status(400).json({
+      error: 'Error occurred while updating your business. Please try again.'
+    });
   }
 };
+
+
+// module.exports.updateBusiness = async (req, res) => {
+//   let { ...data } = req.body;
+
+//   try {
+//       // Convert empty/undefined values to empty strings
+//       Object.keys(data).forEach(key => {
+//           if (data[key] === undefined || data[key] === null) {
+//               data[key] = '';
+//           }
+//       });
+
+//       if (req.file) {
+//           console.log('File received:', req.file.path);
+
+//           const cloudinaryResult = await cloudinaryUploadImage(req.file.path);
+
+//           if (cloudinaryResult.url) {
+//               data.photo = cloudinaryResult.url;
+//               console.log('Image uploaded to Cloudinary:', cloudinaryResult.url);
+
+//               fs.unlinkSync(req.file.path);
+//           } else {
+//               throw new Error('Failed to upload image to Cloudinary');
+//           }
+//       }
+
+//       await businessModel.findByIdAndUpdate(data.businessId, {
+//           $set: data
+//       });
+
+//       console.log("DATA");
+//       console.log(data);
+
+//       return res.status(200).json({
+//           message: "business updated successfully"
+//       });
+
+//   } catch (e) {
+//       console.error(e);
+//       return res.status(400).json({
+//           error: "Error occurred while updating your business. Please try again."
+//       });
+//   }
+// };
 
 module.exports.getOverview=async(req,res)=>{
   try{

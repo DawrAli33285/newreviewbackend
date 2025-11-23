@@ -105,23 +105,16 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+// Temporary storage (files deleted after Cloudinary upload)
+const TEMP_DIR = path.join(__dirname, 'uploads', 'temp');
 
-// Ensure folder exists with proper permissions
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  
-  // Set permissions on Linux/Unix (VPS)
-  try {
-    fs.chmodSync(UPLOADS_DIR, 0o755);
-  } catch (err) {
-    console.log('Could not set permissions (might be Windows)');
-  }
+if (!fs.existsSync(TEMP_DIR)) {
+  fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, UPLOADS_DIR);
+    cb(null, TEMP_DIR);
   },
   filename: function (req, file, cb) {
     const uniqueName = Date.now() + '-' + file.originalname.replace(/\s/g, '_');
@@ -130,7 +123,18 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ 
-  storage
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowedTypes.test(file.mimetype);
+    
+    if (mime && ext) {
+      return cb(null, true);
+    }
+    cb(new Error('Only images are allowed!'));
+  }
 });
 
 module.exports = upload;
