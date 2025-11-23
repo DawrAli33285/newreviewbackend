@@ -104,10 +104,12 @@
 
 
 var multer = require('multer')
-
+const path=require('path')
+const BASE_UPLOAD_PATH = path.join(process.cwd(), 'public/uploads');
 var storage = multer.diskStorage({
     destination: function (request, file, callback) {
-        callback(null, './uploads/');
+      console.log("HEY")
+        callback(null, BASE_UPLOAD_PATH);
     },
     filename: function (request, file, callback) {
         console.log(file);
@@ -117,4 +119,4 @@ var storage = multer.diskStorage({
 
 var upload = multer({ storage: storage });
 
-module.exports=upload
+module.exports=upload 
