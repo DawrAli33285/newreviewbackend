@@ -90,7 +90,7 @@ app.post(
           const refundedCharge = event.data.object;
           console.log("Charge refunded:", refundedCharge.id);
           
-          // If this charge was for a subscription, you might want to cancel it
+        
           if (refundedCharge.invoice) {
             // Get the invoice to find the subscription
             const invoice = await stripe.invoices.retrieve(refundedCharge.invoice);
